@@ -1,0 +1,11 @@
+# Essential dependencies only
+Flask==3.1.2
+flask-cors==6.0.1
+
+# Audio processing
+torch==2.8.0
+torchaudio==2.8.0
+openai-whisper==20250625
+
+# Higgs Audio Model (required)
+# Install with: pip install boson-multimodal
