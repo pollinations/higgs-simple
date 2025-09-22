@@ -84,10 +84,11 @@ def test_voice_cloning(voice_file_path, text_to_say):
             print(f"📊 Audio format: {audio_format}")
             print(f"📊 Audio data length: {len(audio_data)} characters (base64)")
             
-            # Save audio to file
+            # Save audio to file in outputs folder
             audio_bytes = base64.b64decode(audio_data)
             voice_name = os.path.splitext(os.path.basename(voice_file_path))[0]
-            output_file = f"{voice_name}_clone_test.{audio_format}"
+            os.makedirs("outputs", exist_ok=True)
+            output_file = f"outputs/{voice_name}_clone_test.{audio_format}"
             with open(output_file, 'wb') as af:
                 af.write(audio_bytes)
             print(f"💾 Audio saved to {output_file}")

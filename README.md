@@ -5,11 +5,13 @@ OpenAI-compatible audio service with text-to-speech, speech-to-text, and voice c
 ## Features
 
 - **OpenAI Chat Completions API compatibility** - Drop-in replacement
+- **Intelligent Text Generation** - Powered by Higgs Audio v2's advanced language model
 - **Text-to-Speech** - 6 built-in voices + voice cloning
 - **Speech-to-Text** - Whisper-powered transcription  
 - **Voice Cloning** - Clone any voice from reference audio
 - **High Quality** - 24kHz WAV output
-- **Self-hosted** - No API keys, full privacy control
+- **Fully Self-hosted** - No external API dependencies, complete privacy control
+- **Single Model Architecture** - Higgs Audio v2 handles both text and audio generation
 
 ## Quick Start
 
@@ -103,9 +105,11 @@ python3 test_voice_cloning_simple.py voice2.mp3 "Testing voice 2"
 
 ## Why This Service?
 
-- ✅ **No API keys** - Self-hosted, private
+- ✅ **No API keys** - Self-hosted, completely private
+- ✅ **No external dependencies** - Higgs Audio v2 handles everything locally
 - ✅ **OpenAI compatible** - Use existing code/libraries  
 - ✅ **Voice cloning** - Clone any voice from audio
-- ✅ **High quality** - Professional 24kHz output
+- ✅ **High quality** - Professional 24kHz output with advanced language understanding
 - ✅ **Simple setup** - One command to start
-- ✅ **Free** - No usage limits or costs
+- ✅ **Free** - No usage limits, costs, or internet required
+- ✅ **Unified architecture** - Single model for both text and audio generation

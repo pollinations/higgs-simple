@@ -54,3 +54,8 @@ Thumbs.db
 tmp/
 temp/
 *.tmp
+
+# Generated audio outputs
+outputs/
+*.wav
+*.mp3

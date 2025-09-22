@@ -5,7 +5,6 @@ import tempfile
 import logging
 import io
 import time
-import requests
 from typing import Optional, List, Dict, Any
 from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
@@ -180,56 +179,49 @@ def text_to_speech(text: str, voice: str = "alloy", voice_reference_audio: Optio
         raise RuntimeError(f"Text-to-speech failed: {e}")
 
 def generate_text_response(messages: List[Dict[str, Any]]) -> str:
-    """Generate intelligent text response using Pollinations AI"""
+    """Generate intelligent text response using Higgs Audio v2 directly"""
     try:
-        # Prepare the request for Pollinations API
-        pollinations_url = "https://text.pollinations.ai/openai"
+        logger.info(f"Generating response using Higgs Audio v2 with {len(messages)} messages")
         
-        payload = {
-            "model": "openai",
-            "messages": messages,
-            "max_tokens": 1000
-        }
+        # Convert messages to Higgs Audio format
+        higgs_messages = []
         
-        headers = {
-            "Content-Type": "application/json"
-        }
+        # Add a system message for conversational response
+        system_prompt = (
+            "You are a helpful, intelligent, and conversational AI assistant. "
+            "Provide thoughtful, accurate, and engaging responses to user questions and requests. "
+            "Be natural, friendly, and informative in your communication style."
+        )
+        higgs_messages.append(Message(role="system", content=system_prompt))
         
-        logger.info(f"Sending request to Pollinations AI with {len(messages)} messages")
+        # Convert conversation messages
+        for msg in messages:
+            role = msg.get("role", "user")
+            content = msg.get("content", "")
+            if content.strip():  # Only add non-empty messages
+                higgs_messages.append(Message(role=role, content=content))
         
-        # Make request to Pollinations API
-        response = requests.post(
-            pollinations_url,
-            json=payload,
-            headers=headers,
-            timeout=30
+        # Create chat template
+        chat_template = ChatMLSample(messages=higgs_messages)
+        
+        # Generate response using Higgs Audio v2
+        response = tts_model.generate(
+            chat_ml_sample=chat_template,
+            max_new_tokens=1024,
+            temperature=0.7,
+            top_k=50,
+            top_p=0.95
         )
         
-        if response.status_code == 200:
-            result = response.json()
-            
-            # Extract the generated text
-            if "choices" in result and len(result["choices"]) > 0:
-                generated_text = result["choices"][0].get("message", {}).get("content", "")
-                if generated_text:
-                    logger.info(f"Generated text response: {len(generated_text)} characters")
-                    return generated_text.strip()
-            
-            logger.warning("No content in Pollinations API response")
-            return "I apologize, but I couldn't generate a proper response at the moment."
-            
+        # Return whatever the model returns as text
+        if hasattr(response, 'text') and response.text:
+            return response.text.strip()
         else:
-            logger.error(f"Pollinations API error: {response.status_code} - {response.text}")
-            return "I'm having trouble generating a response right now. Please try again."
+            # Fallback to a simple response
+            return "I'm here to help! How can I assist you today?"
             
-    except requests.exceptions.Timeout:
-        logger.error("Pollinations API request timed out")
-        return "I'm taking too long to respond. Please try again."
-    except requests.exceptions.ConnectionError:
-        logger.error("Could not connect to Pollinations API")
-        return "I'm having connectivity issues. Please try again later."
     except Exception as e:
-        logger.error(f"Text generation error: {e}")
+        logger.error(f"Response generation error: {e}")
         return "I encountered an error while generating a response. Please try again."
 
 def speech_to_text(audio_bytes: bytes) -> str:

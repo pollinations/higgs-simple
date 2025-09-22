@@ -9,3 +9,5 @@ openai-whisper==20250625
 
 # Higgs Audio Model (required)
 # Install with: pip install boson-multimodal
+
+# Note: requests dependency removed - no longer needed since we use Higgs Audio v2 directly for text generation
