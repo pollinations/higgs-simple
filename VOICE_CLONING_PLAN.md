@@ -16,12 +16,22 @@ Add voice cloning capability to the simplified audio service while maintaining t
 - **Audio Processing**: Can handle input audio and convert to tokens
 - **Multimodal Input**: Already processes `input_audio` in messages
 - **Base64 Audio Handling**: Working for both input and output
+- **OpenAI Compatibility**: Existing `/v1/chat/completions` endpoint
 
 ### What's Missing
 - **Voice Reference Extraction**: Extract voice sample from input audio
 - **ChatML Voice Integration**: Include voice reference in ChatML sample for generation
 - **Audio Tokenization**: Convert voice reference audio to tokens for the model
 - **Generation Configuration**: Pass voice tokens to the generation process
+- **Voice Cloning Detection**: Logic to detect when voice cloning is requested
+
+### 📋 **API Compatibility Research**
+After analyzing the original audio.pollinations service, we identified key differences:
+- **Original**: Uses `"type": "voice"` content with explicit voice data
+- **OpenAI Standard**: Uses `"type": "input_audio"` with `audio.voice: "clone"` parameter
+- **Recommendation**: Implement hybrid approach supporting both formats
+
+See `API_COMPATIBILITY_ANALYSIS.md` for detailed comparison.
 
 ## 🛠️ **Implementation Plan**
 
@@ -60,9 +70,9 @@ def text_to_speech(text: str, voice_reference: Optional[torch.Tensor] = None) ->
 - Configure audio tokenizer to use voice reference
 - Set appropriate generation flags for voice cloning
 
-### Phase 3: API Enhancement (Est: 1 hour)
+### Phase 3: API Enhancement - Hybrid Approach (Est: 1-2 hours)
 
-#### 3.1 OpenAI API Extension
+#### 3.1 OpenAI-Style Voice Cloning (Primary)
 Support voice cloning through OpenAI-compatible API:
 ```json
 {
@@ -87,23 +97,59 @@ Support voice cloning through OpenAI-compatible API:
 }
 ```
 
-#### 3.2 Voice Detection Logic
-- Detect when `audio.voice` is set to "clone"
-- Automatically use input audio as voice reference
-- Fallback to default voice if no reference provided
+#### 3.2 Pollinations-Style Voice Cloning (Secondary)
+Also support original pollinations format for maximum compatibility:
+```json
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {"type": "text", "text": "Say hello in my voice"},
+        {
+          "type": "voice",
+          "voice": {
+            "data": "base64_voice_sample",
+            "format": "wav"
+          }
+        }
+      ]
+    }
+  ]
+}
+```
 
-### Phase 4: Testing & Validation (Est: 1 hour)
+#### 3.3 Voice Detection Logic
+```python
+def detect_voice_cloning_request(data, content_items):
+    """Detect voice cloning from multiple API formats"""
+    # OpenAI style: audio.voice == "clone"
+    if data.get("audio", {}).get("voice") == "clone":
+        return True
+    
+    # Pollinations style: content type == "voice"
+    for item in content_items:
+        if item.get("type") == "voice":
+            return True
+    
+    return False
+```
+
+### Phase 4: Testing & Validation (Est: 1-2 hours)
 
 #### 4.1 Test Cases
-- Voice cloning with different audio samples
-- Fallback to default voice when cloning fails
-- Quality comparison between cloned and default voices
-- Performance impact measurement
+- **OpenAI Format**: Voice cloning with `audio.voice: "clone"`
+- **Pollinations Format**: Voice cloning with `"type": "voice"`
+- **Hybrid Support**: Both formats in same service
+- **Fallback Testing**: Default voice when cloning fails
+- **Quality Comparison**: Cloned vs default voices
+- **Performance Impact**: Latency and memory usage
 
 #### 4.2 Error Handling
 - Graceful degradation when voice cloning fails
 - Clear error messages for invalid voice references
-- Maintain service stability
+- Maintain service stability across both API formats
+- Backward compatibility with existing clients
 
 ## 📁 **File Changes Required**
 
@@ -176,6 +222,22 @@ Support voice cloning through OpenAI-compatible API:
 
 ---
 
-**Estimated Total Time**: 5-7 hours
-**Complexity**: Medium (leveraging existing model capabilities)
-**Risk**: Low (incremental approach with fallbacks)
+## 🔄 **Updated Implementation Strategy**
+
+Based on analysis of the original audio.pollinations API:
+
+### **Hybrid Compatibility Approach**
+1. **Primary**: OpenAI-style voice cloning (`audio.voice: "clone"`)
+2. **Secondary**: Pollinations-style content types (`"type": "voice"`)
+3. **Benefit**: Maximum compatibility with both ecosystems
+
+### **Implementation Priority**
+1. ✅ **Phase 1**: OpenAI format (simpler, maintains existing compatibility)
+2. ✅ **Phase 2**: Add pollinations format support  
+3. ✅ **Phase 3**: Comprehensive testing of both formats
+
+---
+
+**Estimated Total Time**: 6-8 hours (updated for hybrid approach)
+**Complexity**: Medium (leveraging existing model capabilities + dual format support)
+**Risk**: Low (incremental approach with fallbacks + backward compatibility)
