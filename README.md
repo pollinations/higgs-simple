@@ -57,14 +57,32 @@ response = requests.post("http://localhost:8000/v1/chat/completions", json={
 })
 ```
 
-### Speech-to-Text
+### Audio Input in Chat
 ```python
-response = requests.post("http://localhost:8000/v1/audio/transcriptions",
-    files={"file": ("audio.wav", open("audio.wav", "rb"))},
-    data={"model": "whisper-1"}
-)
+import base64
 
-text = response.json()["text"]
+# Load audio file
+with open("audio.wav", "rb") as f:
+    audio_b64 = base64.b64encode(f.read()).decode()
+
+response = requests.post("http://localhost:8000/v1/chat/completions", json={
+    "model": "gpt-4o-audio-preview",
+    "modalities": ["text", "audio"],
+    "audio": {"voice": "alloy", "format": "wav"},
+    "messages": [{
+        "role": "user",
+        "content": [
+            {"type": "text", "text": "What is in this recording?"},
+            {
+                "type": "input_audio",
+                "input_audio": {
+                    "data": audio_b64,
+                    "format": "wav"
+                }
+            }
+        ]
+    }]
+})
 ```
 
 ## Testing Tool
@@ -74,6 +92,9 @@ Test voice cloning with the included CLI tool:
 ```bash
 # Clone a voice and make it say something
 python3 test_voice_cloning_simple.py /path/to/voice.mp3 "Hello from my cloned voice!"
+
+# Test input audio functionality (OpenAI format)
+python3 test_input_audio.py
 
 # Test different voices
 python3 test_voice_cloning_simple.py voice1.mp3 "Testing voice 1"
@@ -93,9 +114,15 @@ python3 test_voice_cloning_simple.py voice2.mp3 "Testing voice 2"
 
 ## API Endpoints
 
-- **POST** `/v1/chat/completions` - Text generation with optional audio
-- **POST** `/v1/audio/transcriptions` - Speech-to-text
+- **POST** `/v1/chat/completions` - OpenAI-compatible chat with text/audio input and output
 - **GET** `/health` - Service status
+
+### Supported Features in `/v1/chat/completions`:
+- Text-only conversations
+- Text-to-speech with 6 built-in voices
+- Voice cloning from reference audio
+- Audio input transcription (`input_audio` type)
+- Combined audio input + voice cloning output
 
 ## Requirements
 

@@ -1,0 +1,23 @@
+[Unit]
+Description=Simple Audio Service - OpenAI Compatible Audio API
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/scratch/simple-audio-service
+Environment=PATH=/scratch/simple-audio-service/venv/bin
+ExecStart=/scratch/simple-audio-service/venv/bin/python app.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=simple-audio-service
+
+# Resource limits
+LimitNOFILE=65536
+TimeoutStartSec=300
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

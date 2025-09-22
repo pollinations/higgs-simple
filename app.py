@@ -286,14 +286,15 @@ def chat_completions():
                     if item.get("type") == "text":
                         content_parts.append(item.get("text", ""))
                     elif item.get("type") == "input_audio":
-                        # Handle audio input by transcribing it
-                        audio_data = item.get("input_audio", {}).get("data")
+                        # Handle audio input by transcribing it (OpenAI format)
+                        input_audio = item.get("input_audio", {})
+                        audio_data = input_audio.get("data")
                         if audio_data:
                             try:
                                 audio_bytes = base64.b64decode(audio_data)
                                 transcription = speech_to_text(audio_bytes)
-                                content_parts.append(transcription)
-                                logger.info(f"Transcribed audio: {transcription}")
+                                content_parts.append(f"[Audio transcription: {transcription}]")
+                                logger.info(f"Transcribed input audio: {transcription}")
                             except Exception as e:
                                 logger.error(f"Audio processing error: {e}")
                                 content_parts.append("[Audio could not be processed]")
