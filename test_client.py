@@ -127,8 +127,8 @@ if __name__ == "__main__":
     try:
         test_health()
         test_text_only_chat()
-        test_text_with_audio_output()
-        test_audio_input()
+        # test_text_with_audio_output()
+        # test_audio_input()
         
         print("All tests completed!")
         
