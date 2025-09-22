@@ -1,11 +1,18 @@
-
 import os
-import base64
-import tempfile
 import logging
+import tempfile
+import base64
 import io
-import time
-from typing import Optional, List, Dict, Any
+from typing import List, Dict, Any, Optional
+import numpy as np
+import requests
+import random
+
+# Load environment variables
+from dotenv import load_dotenv
+load_dotenv()
+
+import flask
 from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 
@@ -179,49 +186,80 @@ def text_to_speech(text: str, voice: str = "alloy", voice_reference_audio: Optio
         raise RuntimeError(f"Text-to-speech failed: {e}")
 
 def generate_text_response(messages: List[Dict[str, Any]]) -> str:
-    """Generate intelligent text response using Higgs Audio v2 directly"""
+    """Generate intelligent text response using text.pollinations.ai"""
+    
     try:
-        logger.info(f"Generating response using Higgs Audio v2 with {len(messages)} messages")
+        logger.info(f"Generating intelligent response using text.pollinations.ai for {len(messages)} messages")
         
-        # Convert messages to Higgs Audio format
-        higgs_messages = []
-        
-        # Add a system message for conversational response
-        system_prompt = (
-            "You are a helpful, intelligent, and conversational AI assistant. "
-            "Provide thoughtful, accurate, and engaging responses to user questions and requests. "
-            "Be natural, friendly, and informative in your communication style."
-        )
-        higgs_messages.append(Message(role="system", content=system_prompt))
-        
-        # Convert conversation messages
+        # Extract the user's actual message content
+        user_message = ""
         for msg in messages:
-            role = msg.get("role", "user")
-            content = msg.get("content", "")
-            if content.strip():  # Only add non-empty messages
-                higgs_messages.append(Message(role=role, content=content))
+            if msg.get("role") == "user":
+                content = msg.get("content", "")
+                if isinstance(content, str):
+                    user_message = content
+                elif isinstance(content, list):
+                    # Handle OpenAI format with content array
+                    for item in content:
+                        if isinstance(item, dict) and item.get("type") == "text":
+                            user_message = item.get("text", "")
+                            break
+                break
         
-        # Create chat template
-        chat_template = ChatMLSample(messages=higgs_messages)
+        logger.info(f"Extracted user message: {user_message}")
         
-        # Generate response using Higgs Audio v2
-        response = tts_model.generate(
-            chat_ml_sample=chat_template,
-            max_new_tokens=1024,
-            temperature=0.7,
-            top_k=50,
-            top_p=0.95
-        )
+        # Check if user wants verbatim speech
+        if user_message.strip() and "say verbatim:" in user_message.lower():
+            # Extract the verbatim text after "say verbatim:"
+            verbatim_text = user_message.lower().split("say verbatim:", 1)[1].strip()
+            # Remove quotes if present
+            verbatim_text = verbatim_text.strip("'\"")
+            logger.info(f"Verbatim request detected: {verbatim_text}")
+            return verbatim_text
         
-        # Return whatever the model returns as text
-        if hasattr(response, 'text') and response.text:
-            return response.text.strip()
+        # For other requests, use text.pollinations.ai for intelligent responses
+        if user_message.strip():
+            # Prepare payload for text.pollinations.ai
+            payload = {
+                "model": os.getenv("MODEL", "openai"),
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": "You are a helpful, intelligent, and conversational AI assistant. Provide thoughtful, accurate, and engaging responses to user questions and requests. Be natural, friendly, and informative in your communication style."
+                    },
+                    {
+                        "role": "user",
+                        "content": user_message
+                    }
+                ],
+                "temperature": 0.7,
+                "stream": False,
+                "private": True,
+                "token": os.getenv("POLLI_TOKEN"),
+                "referrer": os.getenv("REFERRER", "simple-audio-service"),
+                "max_tokens": 1024,
+                "seed": random.randint(1000, 9999)
+            }
+            
+            # Make request to text.pollinations.ai
+            response = requests.post("https://text.pollinations.ai/openai", json=payload, timeout=30)
+            response.raise_for_status()
+            
+            data = response.json()
+            generated_text = data["choices"][0]["message"]["content"]
+            
+            logger.info(f"Generated intelligent response: {generated_text[:100]}...")
+            return generated_text.strip()
         else:
-            # Fallback to a simple response
             return "I'm here to help! How can I assist you today?"
             
     except Exception as e:
         logger.error(f"Response generation error: {e}")
+        # Fallback to simple response processing for verbatim requests
+        if user_message.strip() and "say verbatim:" in user_message.lower():
+            verbatim_text = user_message.lower().split("say verbatim:", 1)[1].strip()
+            verbatim_text = verbatim_text.strip("'\"")
+            return verbatim_text
         return "I encountered an error while generating a response. Please try again."
 
 def speech_to_text(audio_bytes: bytes) -> str:
